@@ -1,65 +1,89 @@
 # Brain Bites Expo MVP
 
-책, 문서, 긴 설명형 콘텐츠를 `짧은 lesson + practice` 흐름으로 소비하게 만드는 Expo 기반 모바일 MVP입니다.
+`Expo 앱 + 로컬 백엔드 + OpenAI API` 조합으로 긴 텍스트를 `lesson + summary + practice` 구조의 모바일 pack으로 바꾸는 MVP입니다.
 
-핵심 흐름은 아래처럼 구성되어 있습니다.
+## 구조
 
-- `Home`: 추천 pack, 오늘의 진행 상태, creator studio 구조 요약
-- `Content Detail`: 표지, 설명, key ideas, idea 목록
-- `Lesson`: 한 번에 한 카드씩 읽는 학습 화면
-- `Summary`: 핵심 bullet 요약
-- `Practice`: 1문항 퀴즈와 즉시 피드백
-- `Completion`: 완료 상태와 다음 idea 이동
+- `src/RootApp.js`: Expo 앱 UI와 학습 흐름
+- `src/data/learningContent.js`: 기본 샘플 pack 데이터
+- `server/index.js`: Express 백엔드와 OpenAI Responses API 연동
+- `.env.example`: 필요한 환경변수 예시
 
-## 새로 추가된 Expo 구조
+## 환경변수
 
-- `package.json`: Expo 실행 스크립트와 의존성
-- `app.json`: Expo 앱 설정
-- `index.js`: Expo 엔트리 파일
-- `src/RootApp.js`: 전체 모바일 화면 흐름과 UI
-- `src/data/learningContent.js`: 샘플 학습 pack 데이터
+`.env.example`를 복사해서 `.env`를 만든 뒤 값을 채우면 됩니다.
 
-## 실행 방법
+```bash
+cp .env.example .env
+```
 
-의존성을 설치한 뒤 Expo 개발 서버를 실행하면 됩니다.
+필수 값:
+
+```bash
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-5-mini
+PORT=8787
+EXPO_PUBLIC_API_URL=http://127.0.0.1:8787
+```
+
+`EXPO_PUBLIC_API_URL`은 기기별로 다르게 잡아야 합니다.
+
+- iOS 시뮬레이터: `http://127.0.0.1:8787`
+- Android 에뮬레이터: `http://10.0.2.2:8787`
+- 실제 휴대폰: `http://내-맥-로컬-IP:8787`
+
+## 설치
 
 ```bash
 npm install
-npm run start
 ```
 
-플랫폼별 실행:
+## 실행
+
+터미널 1:
 
 ```bash
-npm run ios
-npm run android
-npm run web
+npm run backend
 ```
 
-## 현재 포함된 샘플 콘텐츠
+터미널 2:
 
-- `The Art of Thinking Clearly`
-- 핵심 idea 6개
-- 학습 흐름: `pack detail -> lesson cards -> summary -> practice -> completion`
+```bash
+npm run expo
+```
 
-## 제품 구조 의도
+Expo가 뜨면 아래처럼 볼 수 있습니다.
 
-이 MVP는 앞단 사용자 경험을 `학습 앱`처럼 단순하게 유지하면서, 뒤에서는 향후 아래 제작 레이어를 붙이기 쉽게 설계했습니다.
+- `i`: iOS 시뮬레이터 열기
+- `a`: Android 에뮬레이터 열기
+- `w`: 웹에서 열기
+- 또는 `Expo Go` 앱으로 QR 스캔
 
-- source 업로드
-- idea 추출
-- lesson card 생성
-- practice question 생성
-- pack 발행
+## 현재 앱 흐름
 
-즉, 사용자 입장에서는 쉬운 모바일 학습 앱처럼 보이지만, 서비스 관점에서는 `NotebookLM 스타일의 이해 엔진 + Blinkist/Duolingo 스타일의 소비 UX`를 목표로 합니다.
+- `Home`
+- `AI Studio`
+- `Content Detail`
+- `Lesson`
+- `Summary`
+- `Practice`
+- `Completion`
+
+`AI Studio` 화면에서 텍스트를 붙여넣으면 백엔드가 OpenAI API를 호출하고, 생성된 pack이 앱 라이브러리에 추가됩니다.
+
+## 백엔드 엔드포인트
+
+- `GET /health`
+- `POST /api/generate-pack`
+
+`POST /api/generate-pack`는 `title`, `author`, `category`, `sourceText`를 받아 pack JSON을 돌려줍니다.
 
 ## 기존 웹 프로토타입
 
-아래 파일들은 기존 정적 웹 프로토타입으로 그대로 남겨두었습니다.
+아래 정적 웹 파일은 그대로 보존되어 있습니다.
 
 - `index.html`
 - `styles.css`
 - `app.js`
 
-이 파일들은 Expo 앱 엔트리와 충돌하지 않도록 그대로 보존했고, 새 모바일 MVP는 `index.js`와 `src/` 아래에서 동작합니다.
+새 Expo 앱과 충돌하지 않도록 모바일 앱 엔트리는 `index.js`를 사용합니다.

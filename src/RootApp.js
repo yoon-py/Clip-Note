@@ -1,16 +1,25 @@
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Feather, MaterialIcons } from "@expo/vector-icons";
 
 import { learningPacks } from "./data/learningContent";
+
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://127.0.0.1:8787";
+const defaultSourceText = `Successful people often look like they followed a clear formula, but that formula is usually reconstructed after the fact. We notice the founder who dropped out, the investor who concentrated heavily, and the athlete with extreme routines because their stories survived. We forget the thousands of people who copied the same moves and disappeared quietly.
+
+Good decision making gets worse when we only study the visible winners. Confirmation bias then joins in: once we decide a pattern explains success, we start collecting only the examples that support it. The vivid examples feel persuasive because they are easy to remember, not because they are statistically representative.
+
+A better approach is to ask what is missing from the sample, what evidence would change our minds, and whether the story still works when we include quiet failures in the background.`;
 
 const palette = {
   background: "#EFE3C6",
@@ -30,12 +39,8 @@ function withAlpha(color, alpha) {
   return `${color}${alpha}`;
 }
 
-function getPackById(packId) {
-  return learningPacks.find((pack) => pack.id === packId) || learningPacks[0];
-}
-
-function getIdeaIndex(pack, ideaId) {
-  return pack.ideas.findIndex((idea) => idea.id === ideaId);
+function getPackById(packs, packId) {
+  return packs.find((pack) => pack.id === packId) || packs[0];
 }
 
 function getCompletedIdeaIds(progressByPack, packId) {
@@ -54,20 +59,22 @@ function getProgressLabel(pack, completedIdeaIds) {
   return `${completedIdeaIds.length}/${pack.ideas.length} ideas done`;
 }
 
-function SurfaceButton({ label, onPress, icon, secondary, disabled }) {
+function SurfaceButton({ label, onPress, icon, secondary, disabled, loading }) {
   return (
     <Pressable
       accessibilityRole="button"
-      disabled={disabled}
+      disabled={disabled || loading}
       onPress={onPress}
       style={[
         styles.primaryButton,
         secondary && styles.secondaryButton,
-        disabled && styles.disabledButton,
+        (disabled || loading) && styles.disabledButton,
       ]}
     >
       <View style={styles.primaryButtonRow}>
-        {icon ? (
+        {loading ? (
+          <ActivityIndicator color={secondary ? palette.ink : "#FFF8EA"} />
+        ) : icon ? (
           <MaterialIcons
             color={secondary ? palette.ink : "#FFF8EA"}
             name={icon}
@@ -78,7 +85,7 @@ function SurfaceButton({ label, onPress, icon, secondary, disabled }) {
           style={[
             styles.primaryButtonLabel,
             secondary && styles.secondaryButtonLabel,
-            disabled && styles.disabledButtonLabel,
+            (disabled || loading) && styles.disabledButtonLabel,
           ]}
         >
           {label}
@@ -210,8 +217,8 @@ function IdeaRow({ idea, state, onPress }) {
   );
 }
 
-function HomeScreen({ progressByPack, onOpenPack }) {
-  const featuredPack = learningPacks.find((pack) => pack.status === "ready") || learningPacks[0];
+function HomeScreen({ packs, progressByPack, onOpenPack, onOpenStudio }) {
+  const featuredPack = packs.find((pack) => pack.status === "ready") || packs[0];
   const completedIdeaIds = getCompletedIdeaIds(progressByPack, featuredPack.id);
   const nextIdea = getNextIdea(featuredPack, completedIdeaIds) || featuredPack.ideas.at(-1);
 
@@ -220,9 +227,9 @@ function HomeScreen({ progressByPack, onOpenPack }) {
       <StatusBar style="dark" />
       <ScrollView contentContainerStyle={styles.screenContent} showsVerticalScrollIndicator={false}>
         <SectionHeader
-          kicker="Learning app MVP"
+          kicker="Expo + backend + OpenAI"
           title="Turn dense ideas into short lessons and practice."
-          body="One pack, one idea, one question. The product keeps the reading simple and the progress visible."
+          body="The app now includes a creator studio path so you can paste source text, call the backend, and open an AI-generated pack inside the mobile flow."
         />
 
         <View style={styles.heroCard}>
@@ -254,9 +261,32 @@ function HomeScreen({ progressByPack, onOpenPack }) {
         </View>
 
         <SectionHeader
+          kicker="AI studio"
+          title="Generate a pack from your own source"
+          body="Paste notes, an article excerpt, or a chapter summary. The backend turns it into the same pack structure the app already understands."
+        />
+
+        <View style={styles.studioPreviewCard}>
+          <View style={styles.studioPreviewRow}>
+            <MaterialIcons color={palette.accent} name="upload-file" size={22} />
+            <Text style={styles.studioPreviewText}>Paste text from a source</Text>
+          </View>
+          <View style={styles.studioPreviewRow}>
+            <MaterialIcons color={palette.accent} name="auto-awesome" size={22} />
+            <Text style={styles.studioPreviewText}>Generate ideas, cards, and practice</Text>
+          </View>
+          <View style={styles.studioPreviewRow}>
+            <MaterialIcons color={palette.accent} name="phone-iphone" size={22} />
+            <Text style={styles.studioPreviewText}>Open the generated pack in the Expo app</Text>
+          </View>
+
+          <SurfaceButton icon="auto-awesome" label="Open AI Studio" onPress={onOpenStudio} />
+        </View>
+
+        <SectionHeader
           kicker="Lesson flow"
           title="A simple path from reading to practice"
-          body="This is the user-facing loop we discussed: pack detail, lesson cards, summary, quiz, and completion."
+          body="The user-facing loop is still the same: pack detail, lesson cards, summary, quiz, and completion."
         />
 
         <View style={styles.flowRow}>
@@ -271,10 +301,10 @@ function HomeScreen({ progressByPack, onOpenPack }) {
         <SectionHeader
           kicker="Library"
           title="Pack shelf"
-          body="The MVP can launch with a curated set of packs before user uploads or auto-generation are opened up."
+          body="Generated packs show up here next to the seeded examples."
         />
 
-        {learningPacks.map((pack) => {
+        {packs.map((pack) => {
           const isReady = pack.status === "ready";
           const completed = getCompletedIdeaIds(progressByPack, pack.id).length;
 
@@ -304,23 +334,143 @@ function HomeScreen({ progressByPack, onOpenPack }) {
             </View>
           );
         })}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+function StudioScreen({ onBack, onGenerated }) {
+  const [title, setTitle] = useState("Biases from invisible data");
+  const [author, setAuthor] = useState("AI Studio");
+  const [category, setCategory] = useState("Psychology");
+  const [sourceText, setSourceText] = useState(defaultSourceText);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleGenerate() {
+    setError("");
+    setLoading(true);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/generate-pack`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title,
+          author,
+          category,
+          sourceText,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || data.details || "Generation failed.");
+      }
+
+      onGenerated(data.pack);
+    } catch (generationError) {
+      setError(generationError.message || "Generation failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar style="dark" />
+      <ScrollView contentContainerStyle={styles.screenContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.topBar}>
+          <Pressable accessibilityRole="button" onPress={onBack} style={styles.roundButton}>
+            <Feather color={palette.ink} name="chevron-left" size={24} />
+          </Pressable>
+          <View style={styles.topBarTitleWrap}>
+            <Text style={styles.topBarTitle}>AI Studio</Text>
+            <Text style={styles.topBarCaption}>Expo app -> backend -> OpenAI -> pack</Text>
+          </View>
+        </View>
 
         <SectionHeader
-          kicker="Creator studio"
-          title="The generation layer behind the app"
-          body="The mobile app stays simple because a second layer handles source upload, idea extraction, card generation, and publishing."
+          kicker="Backend target"
+          title="Generate a new learning pack"
+          body="The app posts your source to the local backend, which calls the OpenAI Responses API and sends back a structured pack."
         />
 
-        <View style={styles.studioCard}>
-          {featuredPack.generationSteps.map((step, index) => (
-            <View key={step} style={styles.studioRow}>
-              <View style={styles.studioStepBadge}>
-                <Text style={styles.studioStepBadgeText}>{index + 1}</Text>
-              </View>
-              <Text style={styles.studioRowText}>{step}</Text>
-            </View>
-          ))}
+        <View style={styles.infoCard}>
+          <Text style={styles.infoCardLabel}>API base URL</Text>
+          <Text style={styles.infoCardValue}>{API_BASE_URL}</Text>
+          <Text style={styles.infoCardHint}>
+            Use your Mac's local IP instead of localhost when testing on a real phone.
+          </Text>
         </View>
+
+        <View style={styles.formGroup}>
+          <Text style={styles.inputLabel}>Pack title</Text>
+          <TextInput
+            onChangeText={setTitle}
+            placeholder="Enter a pack title"
+            placeholderTextColor={withAlpha(palette.muted, "A0")}
+            style={styles.input}
+            value={title}
+          />
+        </View>
+
+        <View style={styles.formRow}>
+          <View style={styles.formField}>
+            <Text style={styles.inputLabel}>Author</Text>
+            <TextInput
+              onChangeText={setAuthor}
+              placeholder="Author"
+              placeholderTextColor={withAlpha(palette.muted, "A0")}
+              style={styles.input}
+              value={author}
+            />
+          </View>
+
+          <View style={styles.formField}>
+            <Text style={styles.inputLabel}>Category</Text>
+            <TextInput
+              onChangeText={setCategory}
+              placeholder="Category"
+              placeholderTextColor={withAlpha(palette.muted, "A0")}
+              style={styles.input}
+              value={category}
+            />
+          </View>
+        </View>
+
+        <View style={styles.formGroup}>
+          <Text style={styles.inputLabel}>Source text</Text>
+          <TextInput
+            multiline
+            onChangeText={setSourceText}
+            placeholder="Paste a source, summary, notes, or transcript here."
+            placeholderTextColor={withAlpha(palette.muted, "A0")}
+            style={styles.textArea}
+            textAlignVertical="top"
+            value={sourceText}
+          />
+          <Text style={styles.fieldHint}>
+            Keep at least a few paragraphs. The backend currently requires 400+ characters.
+          </Text>
+        </View>
+
+        {error ? (
+          <View style={styles.errorCard}>
+            <Text style={styles.errorTitle}>Could not generate the pack</Text>
+            <Text style={styles.errorBody}>{error}</Text>
+          </View>
+        ) : null}
+
+        <SurfaceButton
+          icon="auto-awesome"
+          label={loading ? "Generating pack..." : "Generate pack"}
+          loading={loading}
+          onPress={handleGenerate}
+        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -366,10 +516,7 @@ function DetailScreen({ pack, progressByPack, onBack, onStartIdea }) {
           </View>
         </View>
 
-        <SectionHeader
-          title="Description"
-          body={pack.description}
-        />
+        <SectionHeader title="Description" body={pack.description} />
 
         <View style={styles.descriptionCard}>
           <Text style={styles.descriptionText}>{pack.heroLine}</Text>
@@ -470,7 +617,7 @@ function LessonScreen({ pack, idea, cardIndex, onBack, onClose, onContinue }) {
   );
 }
 
-function SummaryScreen({ pack, idea, onBack, onClose, onPractice }) {
+function SummaryScreen({ idea, onBack, onClose, onPractice }) {
   const totalSteps = idea.lessonCards.length + 2;
   const activeIndex = idea.lessonCards.length;
 
@@ -684,15 +831,16 @@ function CompletionScreen({ pack, progressByPack, onBackHome, onReviewPack, onNe
 }
 
 export default function RootApp() {
-  const defaultPack = learningPacks.find((pack) => pack.status === "ready") || learningPacks[0];
+  const initialReadyPack = learningPacks.find((pack) => pack.status === "ready") || learningPacks[0];
+  const [packs, setPacks] = useState(learningPacks);
   const [screen, setScreen] = useState("home");
-  const [activePackId, setActivePackId] = useState(defaultPack.id);
-  const [activeIdeaId, setActiveIdeaId] = useState(defaultPack.ideas[0]?.id || null);
+  const [activePackId, setActivePackId] = useState(initialReadyPack.id);
+  const [activeIdeaId, setActiveIdeaId] = useState(initialReadyPack.ideas[0]?.id || null);
   const [lessonCardIndex, setLessonCardIndex] = useState(0);
   const [selectedAnswerIndex, setSelectedAnswerIndex] = useState(null);
   const [progressByPack, setProgressByPack] = useState({});
 
-  const activePack = getPackById(activePackId);
+  const activePack = getPackById(packs, activePackId);
   const activeIdea =
     activePack.ideas.find((idea) => idea.id === activeIdeaId) || activePack.ideas[0];
 
@@ -773,8 +921,28 @@ export default function RootApp() {
     openIdea(activePackId, nextIdea.id);
   }
 
+  function addGeneratedPack(pack) {
+    setPacks((current) => [pack, ...current.filter((item) => item.id !== pack.id)]);
+    setActivePackId(pack.id);
+    setActiveIdeaId(pack.ideas[0]?.id || null);
+    setLessonCardIndex(0);
+    setSelectedAnswerIndex(null);
+    setScreen("detail");
+  }
+
   if (screen === "home") {
-    return <HomeScreen onOpenPack={openPack} progressByPack={progressByPack} />;
+    return (
+      <HomeScreen
+        onOpenPack={openPack}
+        onOpenStudio={() => setScreen("studio")}
+        packs={packs}
+        progressByPack={progressByPack}
+      />
+    );
+  }
+
+  if (screen === "studio") {
+    return <StudioScreen onBack={() => setScreen("home")} onGenerated={addGeneratedPack} />;
   }
 
   if (screen === "detail") {
@@ -811,7 +979,6 @@ export default function RootApp() {
           setSelectedAnswerIndex(null);
           setScreen("practice");
         }}
-        pack={activePack}
       />
     );
   }
@@ -990,6 +1157,23 @@ const styles = StyleSheet.create({
   disabledButtonLabel: {
     color: withAlpha("#FFF8EA", "BB"),
   },
+  studioPreviewCard: {
+    backgroundColor: withAlpha("#FFF8EE", "E8"),
+    borderRadius: 28,
+    gap: 14,
+    padding: 20,
+  },
+  studioPreviewRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10,
+  },
+  studioPreviewText: {
+    color: palette.ink,
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "600",
+  },
   flowRow: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -1056,36 +1240,6 @@ const styles = StyleSheet.create({
   },
   libraryActionDisabled: {
     backgroundColor: withAlpha(palette.ink, "0F"),
-  },
-  studioCard: {
-    backgroundColor: withAlpha("#FFF8EE", "E8"),
-    borderRadius: 28,
-    padding: 20,
-    gap: 14,
-  },
-  studioRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 12,
-  },
-  studioStepBadge: {
-    alignItems: "center",
-    backgroundColor: withAlpha(palette.accent, "24"),
-    borderRadius: 999,
-    height: 32,
-    justifyContent: "center",
-    width: 32,
-  },
-  studioStepBadgeText: {
-    color: palette.ink,
-    fontSize: 13,
-    fontWeight: "800",
-  },
-  studioRowText: {
-    color: palette.ink,
-    flex: 1,
-    fontSize: 16,
-    fontWeight: "600",
   },
   coverCard: {
     alignSelf: "center",
@@ -1191,6 +1345,91 @@ const styles = StyleSheet.create({
   topBarActions: {
     flexDirection: "row",
     gap: 10,
+  },
+  infoCard: {
+    backgroundColor: withAlpha("#FFF8EE", "EE"),
+    borderRadius: 26,
+    gap: 6,
+    padding: 18,
+  },
+  infoCardLabel: {
+    color: palette.accent,
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+  infoCardValue: {
+    color: palette.ink,
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  infoCardHint: {
+    color: palette.muted,
+    fontSize: 14,
+    lineHeight: 21,
+  },
+  formGroup: {
+    gap: 8,
+  },
+  formRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  formField: {
+    flex: 1,
+    gap: 8,
+  },
+  inputLabel: {
+    color: palette.ink,
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  input: {
+    backgroundColor: withAlpha("#FFF8EE", "EE"),
+    borderColor: withAlpha(palette.line, "CC"),
+    borderRadius: 18,
+    borderWidth: 1,
+    color: palette.ink,
+    fontSize: 16,
+    minHeight: 54,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  textArea: {
+    backgroundColor: withAlpha("#FFF8EE", "EE"),
+    borderColor: withAlpha(palette.line, "CC"),
+    borderRadius: 20,
+    borderWidth: 1,
+    color: palette.ink,
+    fontSize: 16,
+    lineHeight: 24,
+    minHeight: 260,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  fieldHint: {
+    color: palette.muted,
+    fontSize: 13,
+    lineHeight: 20,
+  },
+  errorCard: {
+    backgroundColor: "#F9D9D3",
+    borderColor: "#D35E3C",
+    borderRadius: 24,
+    borderWidth: 1,
+    gap: 6,
+    padding: 18,
+  },
+  errorTitle: {
+    color: palette.ink,
+    fontSize: 17,
+    fontWeight: "800",
+  },
+  errorBody: {
+    color: palette.ink,
+    fontSize: 15,
+    lineHeight: 22,
   },
   categoryChip: {
     alignSelf: "center",

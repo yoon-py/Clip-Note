@@ -5,17 +5,23 @@
   "main": "index.js",
   "scripts": {
     "start": "expo start",
+    "expo": "expo start",
     "android": "expo start --android",
+    "backend": "node --watch server/index.js",
+    "backend:start": "node server/index.js",
     "ios": "expo start --ios",
     "web": "expo start --web"
   },
   "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
     "expo": "~55.0.6",
     "expo-status-bar": "~55.0.4",
+    "express": "^5.2.1",
+    "openai": "^6.27.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-native": "0.83.2",
     "react-native-web": "~0.21.0"
   }
 }
-
