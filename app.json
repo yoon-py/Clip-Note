@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "Brain Bites",
+    "slug": "brain-bites",
+    "scheme": "brainbites",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
+
