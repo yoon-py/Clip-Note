@@ -49,7 +49,7 @@ npm run backend
 터미널 2:
 
 ```bash
-npm run expo
+npm run dev
 ```
 
 Expo가 뜨면 아래처럼 볼 수 있습니다.
